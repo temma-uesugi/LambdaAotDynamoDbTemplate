@@ -13,6 +13,8 @@ AWS Lambda（.NET Native AOT）+ API Gateway（REST API）+ DynamoDB 構成の�
 | `Logging/` | `AppLog.Debug(...)`等でDI無しに呼べる構造化ログ。呼び出し元ファイル:行番号を自動付与し、引数はAOT対応のJSONシリアライズ＋機微情報マスク付き |
 | `Exceptions/` | ログ出力を伴うアプリ内例外基底クラス |
 | `ApiSerializationContext.cs` | AOT向けJSONソース生成コンテキスト（新しいDTO/内部モデルを追加したら`[JsonSerializable]`もここに追加する） |
+| `MasterData/` | [MasterMemory](https://github.com/Cysharp/MasterMemory)によるマスタデータ基盤。テーブル定義（`Entities/`）とYAMLソース（`Sources/`）を持ち、`MasterDataConfig.ConfigureMasterData()`でDIに`MemoryDatabase`を登録する |
+| `MasterData.Generator/` | `MasterData/Sources/*.yml`を`MasterData/Generated/master.bytes`にビルドする開発時専用のコンソールツール（Lambda本体には含めない） |
 | `docker-compose.yml` / `docker/` | DynamoDB Local + アプリ + フロントとの同一オリジン確認用プロキシ（Caddy）のローカル開発環境一式 |
 | `deploy/lambda/Dockerfile` | Lambda本番用（Native AOT、マネージド`dotnet:10`ランタイムイメージ）のビルド |
 
@@ -34,6 +36,8 @@ AWS Lambda（.NET Native AOT）+ API Gateway（REST API）+ DynamoDB 構成の�
   最小サンプル。`Program.cs`で`api.MapSampleEndpoints();`として登録済み。案件のAPIが決まったら
   `Endpoints/XxxEndpoints.cs`を機能単位で作り、`MapXxxEndpoints()`拡張メソッドとして実装、
   `Program.cs`の`var api = app.MapGroup("/api");`以降で`api.MapXxxEndpoints();`を呼ぶ。
+- **`MasterData/Entities/MasterSample.cs`・`MasterData/Sources/MasterSample.yml`**: MasterMemoryによる
+  マスタデータのサンプル。新規テーブルの追加手順・`MasterData.Generator`の使い方はdocs/usage.md参照。
 
 汎用インフラ（`Configures/`・`Services/`・`Logging/`等）の詳しい使い方は[docs/usage.md](docs/usage.md)参照。
 
@@ -47,6 +51,13 @@ AWS Lambda（.NET Native AOT）+ API Gateway（REST API）+ DynamoDB 構成の�
 `Configures/SwaggerConfig.cs`内のコメントアウトされたBearer認証UI定義を有効化する。
 
 ## ローカルでの動作確認
+
+初回・`MasterData/Sources/`配下のYAMLを変更した際は、先にマスタデータのバイナリを生成しておく
+（未生成のまま起動すると`FileNotFoundException`になる）。
+
+```
+dotnet run --project MasterData.Generator
+```
 
 ```
 docker compose up

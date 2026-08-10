@@ -1,16 +1,59 @@
-
+﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LambdaAotDynamoDbTemplate", "LambdaAotDynamoDbTemplate\LambdaAotDynamoDbTemplate.csproj", "{378802FE-6D2C-446C-B1DC-BBE82195EA85}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MasterData", "MasterData\MasterData.csproj", "{F28C6FF3-1DB1-4927-9312-05EA0E033A4B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MasterData.Generator", "MasterData.Generator\MasterData.Generator.csproj", "{DF5AF0B3-DFA2-4134-9AE2-684373E4DD5B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
 		Release|Any CPU = Release|Any CPU
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{378802FE-6D2C-446C-B1DC-BBE82195EA85}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{378802FE-6D2C-446C-B1DC-BBE82195EA85}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{378802FE-6D2C-446C-B1DC-BBE82195EA85}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{378802FE-6D2C-446C-B1DC-BBE82195EA85}.Debug|x64.Build.0 = Debug|Any CPU
+		{378802FE-6D2C-446C-B1DC-BBE82195EA85}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{378802FE-6D2C-446C-B1DC-BBE82195EA85}.Debug|x86.Build.0 = Debug|Any CPU
 		{378802FE-6D2C-446C-B1DC-BBE82195EA85}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{378802FE-6D2C-446C-B1DC-BBE82195EA85}.Release|Any CPU.Build.0 = Release|Any CPU
+		{378802FE-6D2C-446C-B1DC-BBE82195EA85}.Release|x64.ActiveCfg = Release|Any CPU
+		{378802FE-6D2C-446C-B1DC-BBE82195EA85}.Release|x64.Build.0 = Release|Any CPU
+		{378802FE-6D2C-446C-B1DC-BBE82195EA85}.Release|x86.ActiveCfg = Release|Any CPU
+		{378802FE-6D2C-446C-B1DC-BBE82195EA85}.Release|x86.Build.0 = Release|Any CPU
+		{F28C6FF3-1DB1-4927-9312-05EA0E033A4B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F28C6FF3-1DB1-4927-9312-05EA0E033A4B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F28C6FF3-1DB1-4927-9312-05EA0E033A4B}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{F28C6FF3-1DB1-4927-9312-05EA0E033A4B}.Debug|x64.Build.0 = Debug|Any CPU
+		{F28C6FF3-1DB1-4927-9312-05EA0E033A4B}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{F28C6FF3-1DB1-4927-9312-05EA0E033A4B}.Debug|x86.Build.0 = Debug|Any CPU
+		{F28C6FF3-1DB1-4927-9312-05EA0E033A4B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F28C6FF3-1DB1-4927-9312-05EA0E033A4B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F28C6FF3-1DB1-4927-9312-05EA0E033A4B}.Release|x64.ActiveCfg = Release|Any CPU
+		{F28C6FF3-1DB1-4927-9312-05EA0E033A4B}.Release|x64.Build.0 = Release|Any CPU
+		{F28C6FF3-1DB1-4927-9312-05EA0E033A4B}.Release|x86.ActiveCfg = Release|Any CPU
+		{F28C6FF3-1DB1-4927-9312-05EA0E033A4B}.Release|x86.Build.0 = Release|Any CPU
+		{DF5AF0B3-DFA2-4134-9AE2-684373E4DD5B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DF5AF0B3-DFA2-4134-9AE2-684373E4DD5B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DF5AF0B3-DFA2-4134-9AE2-684373E4DD5B}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{DF5AF0B3-DFA2-4134-9AE2-684373E4DD5B}.Debug|x64.Build.0 = Debug|Any CPU
+		{DF5AF0B3-DFA2-4134-9AE2-684373E4DD5B}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{DF5AF0B3-DFA2-4134-9AE2-684373E4DD5B}.Debug|x86.Build.0 = Debug|Any CPU
+		{DF5AF0B3-DFA2-4134-9AE2-684373E4DD5B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DF5AF0B3-DFA2-4134-9AE2-684373E4DD5B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DF5AF0B3-DFA2-4134-9AE2-684373E4DD5B}.Release|x64.ActiveCfg = Release|Any CPU
+		{DF5AF0B3-DFA2-4134-9AE2-684373E4DD5B}.Release|x64.Build.0 = Release|Any CPU
+		{DF5AF0B3-DFA2-4134-9AE2-684373E4DD5B}.Release|x86.ActiveCfg = Release|Any CPU
+		{DF5AF0B3-DFA2-4134-9AE2-684373E4DD5B}.Release|x86.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
 	EndGlobalSection
 EndGlobal

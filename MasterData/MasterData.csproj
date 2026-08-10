@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="MasterMemory" Version="3.0.4" />
+      <PackageReference Include="MessagePack" Version="3.1.8" />
+    </ItemGroup>
+
+    <!-- MasterDataConfig(WebApplicationBuilder拡張)のためにASP.NET Coreの型を参照する -->
+    <ItemGroup>
+      <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    </ItemGroup>
+
+</Project>

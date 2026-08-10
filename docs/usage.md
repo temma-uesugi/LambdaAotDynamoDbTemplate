@@ -126,7 +126,56 @@ Native AOTではリフレクションでの自動解決ができないため、�
 を呼んで登録する。本番で無効化したいデバッグ用エンドポイント等は、`if (!app.Environment.IsProduction()) { ... }`
 の中でマップする。
 
-## 10. 環境変数一覧
+## 10. マスタデータ（MasterMemory）
+
+DynamoDBに格納するデータとは別に、コード変更なしに調整したい定数的なデータ（アイテム定義・パラメータ
+テーブル等）をYAMLで管理し、[MasterMemory](https://github.com/Cysharp/MasterMemory)でバイナリ化して
+アプリに埋め込む仕組み。`MasterData`（テーブル定義）・`MasterData.Generator`（YAML→バイナリ変換ツール）
+の2プロジェクトで構成される。
+
+`MasterData.Generator`を別プロジェクトに分けているのは、Native AOT LambdaというAOT/パッケージサイズに
+シビアな構成のため。YAML読み込みに使う`YamlDotNet`（リフレクション主体でAOT/トリミングと相性が悪い）を
+`MasterData`本体に同居させると、Lambda本体がそれをプロジェクト参照した瞬間にAOTパブリッシュへ巻き込まれて
+しまう。`MasterData`＝Lambdaが参照する軽量スキーマ、`MasterData.Generator`＝開発時だけ動かすビルドツール、
+と役割を分けている。
+
+- **`MasterData/Entities/XxxEntity.cs`**: `[MemoryTable("テーブル名")]` + `[MessagePackObject(true)]`を
+  付けたテーブル定義。コンストラクタ引数がYAMLのキー（PascalCase/camelCaseどちらでも対応）に対応する
+  （`MasterData/Entities/MasterSample.cs`参照）。
+  **名前空間は必ずブロック形式(`namespace X { }`)で書く**こと。ファイルスコープ名前空間(`namespace X;`)だと
+  MasterMemoryのソースジェネレータ(3.0.4時点)が型を解決できずビルドエラーになる。
+- **`MasterData/Sources/テーブル名.yml`**: 実データ。ファイル名は`[MemoryTable]`で指定したテーブル名と
+  一致させる（`MasterData/Sources/MasterSample.yml`参照）。対応するYAMLが無いテーブルは、生成時に警告を
+  出してスキップされる（エラーにはならない）。
+- **`MasterData/MasterDataConfig.cs`**: `builder.ConfigureMasterData();`で、生成済みバイナリを読み込んで
+  `MemoryDatabase`をDIのシングルトンとして登録する（`Program.cs`に登録済み）。エンドポイント側は他のDI
+  サービスと同様に`MemoryDatabase`を引数で受け取って使う。
+
+  ```csharp
+  app.MapGet("/sample/master/{id:int}", (int id, MemoryDatabase masterDb) =>
+      masterDb.MasterSampleTable.FindById(id) is { } item
+          ? TypedResults.Ok(item)
+          : TypedResults.NotFound());
+  ```
+
+### 新規テーブルを追加する手順
+
+1. **`MasterData/Entities/XxxEntity.cs`**: `[MemoryTable("Xxx")]`を付けたクラスを作る
+   （`MasterSample.cs`参照）。
+2. **`MasterData/Sources/Xxx.yml`**: テーブル名と同名のYAMLファイルを追加する。
+3. 下記コマンドでバイナリを再生成する。
+
+### マスタデータの生成
+
+`MasterData/Sources/*.yml`を編集したら、`MasterData/Generated/master.bytes`を再生成する
+（このファイルはgit管理外で、`LambdaAotDynamoDbTemplate.csproj`がビルド時に`master.bytes`として
+出力ディレクトリへコピーする設定になっている。未生成のまま起動すると`FileNotFoundException`になる）。
+
+```
+dotnet run --project MasterData.Generator
+```
+
+## 11. 環境変数一覧
 
 | 環境変数 | 用途 | ローカルでの扱い |
 |---|---|---|

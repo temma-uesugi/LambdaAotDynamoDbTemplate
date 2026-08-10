@@ -35,3 +35,6 @@ secrets.json
 # OS files
 .DS_Store
 Thumbs.db
+
+# MasterData生成物（MasterData.Generatorで再生成する）
+/MasterData/Generated/

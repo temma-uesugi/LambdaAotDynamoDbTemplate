@@ -1,6 +1,7 @@
 using Configures;
 using Endpoints;
 using Logging;
+using MasterData;
 using Microsoft.AspNetCore.Routing.Constraints;
 using Services;
 
@@ -9,6 +10,7 @@ var builder = WebApplication.CreateSlimBuilder(args);
 
 builder.ConfigureLambda();
 builder.ConfigureDynamoDb();
+builder.ConfigureMasterData();
 builder.ConfigureSwagger();
 builder.ConfigureJwt();
 builder.ConfigureRecaptcha();
