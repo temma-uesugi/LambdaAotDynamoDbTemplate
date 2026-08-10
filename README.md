@@ -64,6 +64,17 @@ docker compose up db db-init
 dotnet run --project LambdaAotDynamoDbTemplate
 ```
 
+### DynamoDB Localの中身をPowerShellから確認する
+
+`scripts/show-tables.ps1`・`scripts/get-all.ps1`は、`http://localhost:8001`（`docker-compose.yml`が
+ポート公開しているDynamoDB Local）に対して直接AWS CLIを叩く確認用スクリプト。ポート公開さえされていれば
+DynamoDB Localをdocker-compose上・ホスト上どちらで動かしていても使える。
+
+```
+pwsh scripts/show-tables.ps1
+pwsh scripts/get-all.ps1 sample_items
+```
+
 ### フロントとの同一オリジン確認用プロキシ
 
 Cookie認証はブラウザの同一オリジン（または同一サイト）判定に依存するため、本番はフロントとAPIを
