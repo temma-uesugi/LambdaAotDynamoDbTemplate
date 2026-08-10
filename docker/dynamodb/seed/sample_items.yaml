@@ -1,0 +1,10 @@
+RequestItems:
+  sample_items:
+    - PutRequest:
+        Item:
+          id: { S: "sample-1" }
+          name: { S: "サンプルアイテム1" }
+    - PutRequest:
+        Item:
+          id: { S: "sample-2" }
+          name: { S: "サンプルアイテム2" }

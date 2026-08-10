@@ -1,0 +1,45 @@
+services:
+  db:
+    image: amazon/dynamodb-local:latest
+    ports:
+      - "8001:8000"
+    command: "-jar DynamoDBLocal.jar -sharedDb -inMemory"
+
+  db-init:
+    image: amazon/aws-cli:latest
+    depends_on:
+      - db
+    environment:
+      AWS_ACCESS_KEY_ID: local
+      AWS_SECRET_ACCESS_KEY: local
+      AWS_DEFAULT_REGION: us-east-1
+    volumes:
+      - ./docker/dynamodb:/dynamodb:ro
+    entrypoint: ["/bin/bash", "/dynamodb/init-tables.sh"]
+
+  app:
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    working_dir: /app/LambdaAotDynamoDbTemplate
+    volumes:
+      - ./:/app
+    depends_on:
+      - db-init
+    ports:
+      - "5001:5001"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:5001
+      DYNAMODB_LOCAL_ENDPOINT: http://db:8000
+    command: dotnet run --no-launch-profile
+
+  proxy:
+    image: caddy:alpine
+    depends_on:
+      - app
+    ports:
+      - "8181:8181"
+    environment:
+      FRONTEND_PORT: ${FRONTEND_PORT:-}
+      API_PATH: ${API_PATH:-api}
+    volumes:
+      - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro

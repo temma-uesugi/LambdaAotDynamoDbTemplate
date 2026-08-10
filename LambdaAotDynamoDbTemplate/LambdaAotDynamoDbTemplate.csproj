@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <PublishAot>true</PublishAot>
+        <InvariantGlobalization>true</InvariantGlobalization>
+        <StripSymbols>true</StripSymbols>
+        <RootNamespace />
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Amazon.Lambda.AspNetCoreServer.Hosting" Version="2.1.0" />
+        <PackageReference Include="Amazon.Lambda.RuntimeSupport" Version="2.1.2" />
+        <PackageReference Include="AWSSDK.DynamoDBv2" Version="4.0.100.2" />
+        <PackageReference Include="AWSSDK.SecretsManager" Version="4.0.0.5" />
+        <PackageReference Include="AWSSDK.SimpleSystemsManagement" Version="4.0.100.2" />
+        <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.15.0" />
+        <PackageReference Include="Swashbuckle.AspNetCore" Version="10.2.3" />
+        <!-- AOT環境で軽量なLINQ的コレクション操作をしたい場合に使う（現状コードからは未使用。使わないなら削除してよい） -->
+        <PackageReference Include="ZLinq" Version="1.5.6" />
+    </ItemGroup>
+
+</Project>

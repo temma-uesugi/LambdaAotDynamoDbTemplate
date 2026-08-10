@@ -1,0 +1,9 @@
+:8181 {
+    handle /{$API_PATH}/* {
+        reverse_proxy app:5001
+    }
+
+    handle {
+        reverse_proxy host.docker.internal:{$FRONTEND_PORT}
+    }
+}
