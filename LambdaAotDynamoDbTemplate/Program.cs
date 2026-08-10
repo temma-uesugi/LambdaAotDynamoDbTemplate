@@ -45,7 +45,10 @@ var app = builder.Build();
 // DIせずAppLog.Debug(...)等で呼べるようにする（内部の実処理はIAppLoggerに委譲）
 AppLog.Initialize(app.Services.GetRequiredService<IAppLogger>());
 
-app.UseOriginVerification();
+// CloudFrontを前段に挟み、CloudFrontが注入する秘匿ヘッダーで直接アクセス（Lambda/API Gatewayの直叩き）を
+// 拒否したい場合に有効化する（Configures/OriginVerificationConfig.cs）。CloudFrontを挟まない構成
+// （API Gateway直、別のCDN等）では不要なため、有効化しないなら環境変数ORIGIN_VERIFY_SECRETも未設定のままでよい。
+// app.UseOriginVerification();
 app.UseSecurityHeaders();
 // app.UseCors();
 

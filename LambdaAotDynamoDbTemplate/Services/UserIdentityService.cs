@@ -1,3 +1,5 @@
+using Microsoft.IdentityModel.JsonWebTokens;
+
 namespace Services;
 
 /// <summary>
@@ -20,10 +22,19 @@ public class UserIdentityService
     /// <summary>
     /// CookieからユーザIDを取り出す（JWT署名検証込み）
     /// </summary>
-    public Task<Guid?> TryGetUserIdAsync(HttpContext context)
+    public async Task<Guid?> TryGetUserIdAsync(HttpContext context)
     {
-        return _cookieService.TryGet(context, Const.UserIdCookieKey, out var token)
-            ? _jwtTokenService.TryGetUserIdFromTokenAsync(token)
-            : Task.FromResult<Guid?>(null);
+        if (!_cookieService.TryGet(context, Const.UserIdCookieKey, out var token))
+        {
+            return null;
+        }
+
+        var claims = await _jwtTokenService.TryGetClaimsFromTokenAsync(token);
+        if (claims is null || !claims.TryGetValue(JwtRegisteredClaimNames.Sub, out var subClaim))
+        {
+            return null;
+        }
+
+        return Guid.TryParse(subClaim.Value, out var userId) ? userId : null;
     }
 }

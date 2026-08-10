@@ -28,7 +28,7 @@ builder.ConfigureRecaptcha();   // reCAPTCHAシークレット取得 + Recaptcha
 | `DynamoDbTableNames.cs` | テーブルごとの実テーブル名を環境変数から読む。**新規テーブル追加時はここにプロパティを足す**（3章参照） |
 | `JwtConfig.cs` | ローカルはダミー鍵、本番は`SSM_PARAM_JWT`が指すParameter StoreからJWT署名鍵を取得 |
 | `RecaptchaConfig.cs` | ローカルはダミー、本番は`SSM_PARAM_RECAPTCHA`からreCAPTCHAシークレットを取得。使わない案件ではファイルごと削除してよい |
-| `OriginVerificationConfig.cs` | CloudFrontが注入する秘匿ヘッダー（`X-Origin-Secret`、値は`ORIGIN_VERIFY_SECRET`環境変数）を検証し、直叩きを403で拒否する。ローカルでは無効 |
+| `OriginVerificationConfig.cs` | CloudFrontが注入する秘匿ヘッダー（`X-Origin-Secret`、値は`ORIGIN_VERIFY_SECRET`環境変数）を検証し、直叩きを403で拒否する。CloudFrontを前段に挟まない構成もあるため、`Program.cs`の`app.UseOriginVerification();`はデフォルトでコメントアウトしてある。使う案件ではコメントを解除する |
 | `SecurityHeadersConfig.cs` | `X-Content-Type-Options: nosniff`等、レスポンスに付与するセキュリティヘッダーをまとめる場所 |
 | `SwaggerConfig.cs` | Swagger UIの設定。Bearer認証UIの定義例がコメントアウトで残してある（4章参照） |
 
@@ -53,7 +53,7 @@ DIで受け取って使う。テーブル名は必ず`DynamoDbTableNames`経由�
 ```csharp
 // 新規ユーザにCookieを発行する場合の書き方
 var userId = Guid.NewGuid();
-var token = jwtTokenService.IssueToken(userId, Const.CookieExpiration);
+var token = jwtTokenService.IssueToken(userId.ToString(), Const.CookieExpiration);
 cookieService.SetWithExpiry(context.Response, Const.UserIdCookieKey, token, Const.CookieExpiration);
 
 // Cookieからユーザを識別する場合（Endpoints/Sample.csの/sample/authが実例）
@@ -64,7 +64,7 @@ if (userId is null)
 }
 ```
 
-Cookie方式ではなくBearerヘッダ方式で認証したい案件では、`JwtTokenService.TryGetUserIdAsync(string?)`
+Cookie方式ではなくBearerヘッダ方式で認証したい案件では、`JwtTokenService.TryGetClaimsAsync(string?)`
 （`Authorization: Bearer <token>`を直接検証する）をそのまま使い、`Configures/SwaggerConfig.cs`内の
 コメントアウトされたBearer認証UI定義を有効化する。
 
@@ -184,5 +184,5 @@ dotnet run --project MasterData.Generator
 | `TABLE_SAMPLE_ITEMS` | `sample_items`テーブルの実テーブル名 | 未設定時は`sample_items`（テーブル追加時は同様の環境変数を追加する） |
 | `SSM_PARAM_JWT` | JWT署名鍵のParameter Storeパラメータ名 | ローカルでは未参照（ダミー鍵を使用） |
 | `SSM_PARAM_RECAPTCHA` | reCAPTCHAシークレットのParameter Storeパラメータ名 | ローカルでは未参照（reCAPTCHA検証自体をスキップ） |
-| `ORIGIN_VERIFY_SECRET` | CloudFront直叩き防止用の秘匿ヘッダーの期待値 | ローカルではミドルウェア自体を登録しないため未参照 |
+| `ORIGIN_VERIFY_SECRET` | CloudFront直叩き防止用の秘匿ヘッダーの期待値 | `Program.cs`の`app.UseOriginVerification();`がデフォルトでコメントアウトされているため未参照。CloudFrontを前段に挟む構成で有効化した場合のみ必要 |
 | `FRONTEND_PORT` / `API_PATH` | ローカルの同一オリジン確認用プロキシ（Caddy）向け設定 | `.env`（`.env.example`参照） |

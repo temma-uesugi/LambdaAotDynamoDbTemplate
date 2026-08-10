@@ -17,7 +17,7 @@ public static class SwaggerConfig
         {
             // Note: Cookie認証を使う場合、このBearerトークンUIはどのエンドポイントからも参照されない。
             // 有効にするとSwagger UI上の全エンドポイントに鍵アイコンが付くため、使わない構成ではコメントアウトしておく。
-            // Bearerヘッダ方式（Services/JwtTokenService.csのTryGetUserIdAsync(string?)）を使う案件では、
+            // Bearerヘッダ方式（Services/JwtTokenService.csのTryGetClaimsAsync(string?)）を使う案件では、
             // コメントを解除するだけで復活できる。
             // c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme()
             // {

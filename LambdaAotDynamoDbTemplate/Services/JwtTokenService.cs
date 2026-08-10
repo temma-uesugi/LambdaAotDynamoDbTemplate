@@ -22,13 +22,20 @@ public class JwtTokenService
     }
 
     /// <summary>
-    /// ユーザIDのJWTを発行する
+    /// ユーザIDのJWTを発行する。sub（ユーザID）以外にクレームを含めたい場合はadditionalClaimsで渡す
+    /// （例: additionalClaims: new() { ["device_id"] = new Claim("device_id", deviceId) }）
     /// </summary>
-    public string IssueToken(Guid userId, TimeSpan expiration)
+    public string IssueToken(string userId, TimeSpan expiration, Dictionary<string, Claim>? additionalClaims = null)
     {
+        var claims = new List<Claim> { new(JwtRegisteredClaimNames.Sub, userId) };
+        if (additionalClaims is not null)
+        {
+            claims.AddRange(additionalClaims.Values);
+        }
+
         var descriptor = new SecurityTokenDescriptor
         {
-            Subject = new ClaimsIdentity([new Claim(JwtRegisteredClaimNames.Sub, userId.ToString())]),
+            Subject = new ClaimsIdentity(claims),
             Expires = DateTime.UtcNow.Add(expiration),
             SigningCredentials = new SigningCredentials(_signingKey, SecurityAlgorithms.HmacSha256),
         };
@@ -36,26 +43,26 @@ public class JwtTokenService
     }
 
     /// <summary>
-    /// AuthorizationヘッダのBearerトークンを検証し、ユーザIDを取り出す。
+    /// AuthorizationヘッダのBearerトークンを検証し、クレーム一覧を取り出す（クレーム名 -> Claim）。
     /// 現状どこからも呼ばれていないが、Bearerヘッダ方式で認証したい案件向けにあえて残してある
     /// （Cookie方式を使うならこのメソッドは不要。Configures/SwaggerConfig.csのコメントアウトと対）。
     /// </summary>
-    public Task<Guid?> TryGetUserIdAsync(string? authorizationHeaderValue)
+    public Task<Dictionary<string, Claim>?> TryGetClaimsAsync(string? authorizationHeaderValue)
     {
         const string bearerPrefix = "Bearer ";
         if (authorizationHeaderValue is null || !authorizationHeaderValue.StartsWith(bearerPrefix, StringComparison.Ordinal))
         {
-            return Task.FromResult<Guid?>(null);
+            return Task.FromResult<Dictionary<string, Claim>?>(null);
         }
 
         // "Bearer "プレフィックスを除いた部分（トークン本体）だけを取り出す
-        return TryGetUserIdFromTokenAsync(authorizationHeaderValue.Substring(bearerPrefix.Length));
+        return TryGetClaimsFromTokenAsync(authorizationHeaderValue.Substring(bearerPrefix.Length));
     }
 
     /// <summary>
-    /// JWT文字列を直接検証し、ユーザIDを取り出す（Cookie等、ヘッダを介さない用途向け）
+    /// JWT文字列を直接検証し、クレーム一覧を取り出す（Cookie等、ヘッダを介さない用途向け）
     /// </summary>
-    public async Task<Guid?> TryGetUserIdFromTokenAsync(string? token)
+    public async Task<Dictionary<string, Claim>?> TryGetClaimsFromTokenAsync(string? token)
     {
         if (string.IsNullOrEmpty(token))
         {
@@ -75,7 +82,6 @@ public class JwtTokenService
             return null;
         }
 
-        var sub = result.ClaimsIdentity.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
-        return Guid.TryParse(sub, out var userId) ? userId : null;
+        return result.ClaimsIdentity.Claims.ToDictionary(c => c.Type, c => c);
     }
 }

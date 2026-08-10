@@ -46,7 +46,7 @@ AWS Lambda（.NET Native AOT）+ API Gateway（REST API）+ DynamoDB 構成の�
 匿名ユーザをサーバ発行GUID + 署名付きJWTで識別し、Cookie（`HttpOnly`）で保持する構成を想定している
 （`Services/CookieService.cs` / `JwtTokenService.cs` / `UserIdentityService.cs`）。
 
-`Authorization: Bearer`ヘッダで直接JWTを検証する`JwtTokenService.TryGetUserIdAsync(string?)`も
+`Authorization: Bearer`ヘッダで直接JWTを検証する`JwtTokenService.TryGetClaimsAsync(string?)`も
 あえて残してある。Cookie方式ではなくBearerヘッダ方式を使いたい案件では、これをそのまま呼び出し、
 `Configures/SwaggerConfig.cs`内のコメントアウトされたBearer認証UI定義を有効化する。
 
@@ -103,7 +103,12 @@ Cookie認証はブラウザの同一オリジン（または同一サイト）�
 
 ## 本番デプロイ用イメージ
 
+`MasterData/Sources/`のYAMLに変更があれば、先にマスタデータのバイナリを再生成しておく
+（`MasterData/Generated/master.bytes`はgit管理外のため、未生成のままイメージを作ると
+起動時に`FileNotFoundException`になる）。
+
 ```
+dotnet run --project MasterData.Generator
 docker build -f deploy/lambda/Dockerfile -t <image-name> .
 ```
 
