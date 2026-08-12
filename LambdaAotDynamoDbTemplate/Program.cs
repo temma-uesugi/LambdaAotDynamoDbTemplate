@@ -50,6 +50,9 @@ AppLog.Initialize(app.Services.GetRequiredService<IAppLogger>());
 // （API Gateway直、別のCDN等）では不要なため、有効化しないなら環境変数ORIGIN_VERIFY_SECRETも未設定のままでよい。
 // app.UseOriginVerification();
 app.UseSecurityHeaders();
+
+// 上のbuilder.Services.AddCors(...)とセットで無効化中。有効化する場合は両方同時に有効化すること
+// （AddCorsなしでUseCorsだけ呼ぶと例外になる）。
 // app.UseCors();
 
 // Swashbuckle Swaggerの設定（本番では無効化）
