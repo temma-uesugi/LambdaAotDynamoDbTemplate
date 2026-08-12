@@ -1,6 +1,8 @@
+using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.DataModel;
 using Configures;
 using DBs;
+using Logging;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Services;
@@ -19,7 +21,21 @@ public static class SampleEndpoints
     public static void MapSampleEndpoints(this IEndpointRouteBuilder app)
     {
         // サンプル1: 最小構成のGET。パスパラメータを受け取り、単純な計算結果をそのまま返す（Dto不要な例）。
-        app.MapGet("/sample/get/{amount:int}", (int amount) => TypedResults.Ok(amount + 1))
+        // 案件でよく使うDI引数（RecaptchaService/IDynamoDBContext/IAmazonDynamoDB/JwtTokenService/IAppLogger）は
+        // 未使用でもとりあえず引数に含めておき、必要になったらすぐ使えるようにしておく。
+        app.MapGet("/sample/get/{amount:int}", (
+                int amount,
+                RecaptchaService recaptchaService,
+                IDynamoDBContext dbContext,
+                IAmazonDynamoDB dynamoDb,
+                JwtTokenService jwtTokenService,
+                IAppLogger logger) =>
+            {
+                // Loggerの使い方サンプル。第2引数以降(arg1〜arg5)にプリミティブ以外を渡すとJSON化して出力される
+                logger.Information("サンプルGETを受信しました", amount);
+
+                return TypedResults.Ok(amount + 1);
+            })
             .WithName("SampleGet")
             .WithSummary("サンプル: GET")
             .WithDescription("パスパラメータamountを受け取り、amount+1を返す")
@@ -27,8 +43,18 @@ public static class SampleEndpoints
 
         // サンプル2: リクエスト・レスポンスをDtoクラス（Dto.SamplePostReq / Dto.SamplePostRes）として
         // 定義し、ApiSerializationContext.csにも登録した上で受け渡しする例。
-        app.MapPost("/sample/post", ([FromBody] Dto.SamplePostReq req) =>
-                TypedResults.Ok(new Dto.SamplePostRes(req.Value + 1)))
+        app.MapPost("/sample/post", (
+                [FromBody] Dto.SamplePostReq req,
+                RecaptchaService recaptchaService,
+                IDynamoDBContext dbContext,
+                IAmazonDynamoDB dynamoDb,
+                JwtTokenService jwtTokenService,
+                IAppLogger logger) =>
+            {
+                logger.Information("サンプルPOSTを受信しました", req);
+
+                return TypedResults.Ok(new Dto.SamplePostRes(req.Value + 1));
+            })
             .WithName("SamplePost")
             .WithSummary("サンプル: POST")
             .WithDescription("リクエストボディ(SamplePostReq)のValueを受け取り、Value+1をSamplePostResとして返す")
@@ -39,13 +65,22 @@ public static class SampleEndpoints
         // 分岐ごとにTypedResults.Ok(...) / TypedResults.Unauthorized()を返す。
         app.MapGet("/sample/auth", async Task<Results<Ok<Dto.SampleAuthRes>, UnauthorizedHttpResult>> (
                 HttpContext context,
-                UserIdentityService userIdentityService) =>
+                UserIdentityService userIdentityService,
+                RecaptchaService recaptchaService,
+                IDynamoDBContext dbContext,
+                IAmazonDynamoDB dynamoDb,
+                JwtTokenService jwtTokenService,
+                IAppLogger logger) =>
             {
                 var userId = await userIdentityService.TryGetUserIdAsync(context);
                 if (userId is null)
                 {
+                    // Errorレベルの例: 第1引数(exception)はnull許容で、例外がない警告的なエラーでも使える
+                    logger.Warning("Cookieのユーザ認証に失敗しました");
                     return TypedResults.Unauthorized();
                 }
+
+                logger.Information("認証済みユーザでサンプルAuthを受信しました", userId.Value);
 
                 return TypedResults.Ok(new Dto.SampleAuthRes(userId.Value));
             })
@@ -59,14 +94,21 @@ public static class SampleEndpoints
         app.MapGet("/sample/item/{id}", async Task<Results<Ok<Dto.SampleItemRes>, NotFound>> (
                 string id,
                 IDynamoDBContext dbContext,
-                DynamoDbTableNames tableNames) =>
+                DynamoDbTableNames tableNames,
+                RecaptchaService recaptchaService,
+                IAmazonDynamoDB dynamoDb,
+                JwtTokenService jwtTokenService,
+                IAppLogger logger) =>
             {
                 var config = new LoadConfig { OverrideTableName = tableNames.SampleItems };
                 var item = await dbContext.LoadAsync<SampleItem>(id, config);
                 if (item is null)
                 {
+                    logger.Warning("サンプルアイテムが見つかりませんでした", id);
                     return TypedResults.NotFound();
                 }
+
+                logger.Information("サンプルアイテムを取得しました", item);
 
                 return TypedResults.Ok(new Dto.SampleItemRes(item.Id, item.Name));
             })
