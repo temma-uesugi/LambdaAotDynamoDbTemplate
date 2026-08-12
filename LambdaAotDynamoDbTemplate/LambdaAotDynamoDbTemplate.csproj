@@ -22,10 +22,6 @@
         <PackageReference Include="ZLinq" Version="1.5.6" />
     </ItemGroup>
 
-    <ItemGroup>
-      <ProjectReference Include="..\MasterData\MasterData.csproj" />
-    </ItemGroup>
-
     <!-- MasterData.Generatorが生成するマスタバイナリ。事前にMasterData.Generatorを実行して生成しておく必要がある -->
     <ItemGroup>
       <Content Include="..\MasterData\Generated\master.bytes" Link="master.bytes" Condition="Exists('..\MasterData\Generated\master.bytes')">

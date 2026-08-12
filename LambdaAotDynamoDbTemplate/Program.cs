@@ -1,7 +1,6 @@
 using Configures;
 using Endpoints;
 using Logging;
-using MasterData;
 using Microsoft.AspNetCore.Routing.Constraints;
 using Services;
 
@@ -10,10 +9,12 @@ var builder = WebApplication.CreateSlimBuilder(args);
 
 builder.ConfigureLambda();
 builder.ConfigureDynamoDb();
-builder.ConfigureMasterData();
 builder.ConfigureSwagger();
 builder.ConfigureJwt();
 builder.ConfigureRecaptcha();
+
+//マスタを参照するなら
+//MasterDataを参照して、MasterData.ConfigをDI登録する
 
 // CORS設定
 // Note: Cookie認証を使う場合、AllowAnyOriginとAllowCredentialsは併用できない。
