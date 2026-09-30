@@ -15,6 +15,7 @@ namespace MasterData.Generator
         private const string SourcesDirectoryName = "Sources";
         private const string OutputDirectoryName = "Generated";
         private const string OutputFileName = "master.bytes";
+        private const string YamlExtension = ".yml";
 
         /// <summary>
         /// マスタバイナリを生成する
@@ -58,20 +59,22 @@ namespace MasterData.Generator
             }
 
             var tableName = entityType.GetCustomAttribute<MemoryTableAttribute>()!.TableName;
-            var yamlPath = Path.Combine(sourcesRoot, tableName + ".yml");
-            if (!File.Exists(yamlPath))
+            var yamlPaths = FindYamlPaths(sourcesRoot, tableName);
+            if (yamlPaths.Count == 0)
             {
-                Console.WriteLine($"[MasterBinaryGenerator] Source yaml not found: {yamlPath}, skipped.");
+                Console.WriteLine($"[MasterBinaryGenerator] Source yaml not found: {Path.Combine(sourcesRoot, tableName)}(.yml), skipped.");
                 return;
             }
 
             var listType = typeof(List<>).MakeGenericType(entityType);
             var combinedList = (IList)Activator.CreateInstance(listType)!;
 
-            var yaml = File.ReadAllText(yamlPath);
-            var rawList = deserializer.Deserialize<List<Dictionary<object, object>>>(new StringReader(yaml));
-            if (rawList != null)
+            foreach (var yamlPath in yamlPaths)
             {
+                var yaml = File.ReadAllText(yamlPath);
+                var rawList = deserializer.Deserialize<List<Dictionary<object, object>>>(new StringReader(yaml));
+                if (rawList == null) continue;
+
                 foreach (var dict in rawList)
                 {
                     combinedList.Add(ConstructFromDictionary(entityType, dict));
@@ -82,6 +85,24 @@ namespace MasterData.Generator
 
             appendMethod.Invoke(builder, [combinedList]);
             Console.WriteLine($"[MasterBinaryGenerator] Appended {combinedList.Count} records: {entityType.Name}");
+        }
+
+        /// <summary>
+        /// テーブル名に対応するYAMLファイルの一覧を取得する。
+        /// 「{テーブル名}.yml」があればそれのみ、無ければ「{テーブル名}」ディレクトリ配下の全ymlを対象とする
+        /// </summary>
+        private static List<string> FindYamlPaths(string sourcesRoot, string tableName)
+        {
+            var filePath = Path.Combine(sourcesRoot, tableName + YamlExtension);
+            if (File.Exists(filePath)) return [filePath];
+
+            var directoryPath = Path.Combine(sourcesRoot, tableName);
+            if (!Directory.Exists(directoryPath)) return [];
+
+            // ファイルシステムの列挙順に依存しないよう、パス順に並べてレコード順を安定させる
+            var paths = Directory.GetFiles(directoryPath, "*" + YamlExtension, SearchOption.AllDirectories).ToList();
+            paths.Sort(StringComparer.Ordinal);
+            return paths;
         }
 
         /// <summary>

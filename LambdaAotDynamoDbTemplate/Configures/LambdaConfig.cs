@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Amazon.Lambda.Serialization.SystemTextJson;
 
 namespace Configures;
@@ -25,6 +26,10 @@ public static class LambdaConfig
         builder.Services.ConfigureHttpJsonOptions(options =>
         {
             options.SerializerOptions.TypeInfoResolverChain.Insert(0, ApiSerializationContext.Default);
+            // ApiSerializationContextの[JsonSourceGenerationOptions(DefaultIgnoreCondition = ...)]は、
+            // Default(自身専用)のJsonSerializerOptionsにのみ適用される。TypeInfoResolverChainへ差し込んで
+            // 使う場合はプロパティのIgnoreConditionがこちら側のオプションを参照するため、ここでも明示的に設定する。
+            options.SerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
         });
     }
 }

@@ -147,6 +147,8 @@ DynamoDBに格納するデータとは別に、コード変更なしに調整し
 - **`MasterData/Sources/テーブル名.yml`**: 実データ。ファイル名は`[MemoryTable]`で指定したテーブル名と
   一致させる（`MasterData/Sources/MasterSample.yml`参照）。対応するYAMLが無いテーブルは、生成時に警告を
   出してスキップされる（エラーにはならない）。
+  `テーブル名.yml`の代わりに`MasterData/Sources/テーブル名/`ディレクトリを置くと、配下の全yml（サブディレクトリ含む、
+  パス順）を1つのテーブルとして読み込む。ファイルとディレクトリが両方ある場合はファイルが優先される。
 - **`MasterData/MasterDataConfig.cs`**: `builder.ConfigureMasterData();`で、生成済みバイナリを読み込んで
   `MemoryDatabase`をDIのシングルトンとして登録する（`Program.cs`に登録済み）。エンドポイント側は他のDI
   サービスと同様に`MemoryDatabase`を引数で受け取って使う。
