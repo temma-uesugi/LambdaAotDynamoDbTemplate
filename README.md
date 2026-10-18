@@ -15,7 +15,7 @@ AWS Lambda（.NET Native AOT）+ API Gateway（REST API）+ DynamoDB 構成の�
 | `ApiSerializationContext.cs` | AOT向けJSONソース生成コンテキスト（新しいDTO/内部モデルを追加したら`[JsonSerializable]`もここに追加する） |
 | `MasterData/` | [MasterMemory](https://github.com/Cysharp/MasterMemory)によるマスタデータ基盤。テーブル定義（`Entities/`）とYAMLソース（`Sources/`）を持ち、`MasterDataConfig.ConfigureMasterData()`でDIに`MemoryDatabase`を登録する |
 | `MasterData.Generator/` | `MasterData/Sources/*.yml`を`MasterData/Generated/master.bytes`にビルドする開発時専用のコンソールツール（Lambda本体には含めない） |
-| `docker-compose.yml` / `docker/` | DynamoDB Local + アプリ + フロントとの同一オリジン確認用プロキシ（Caddy）のローカル開発環境一式 |
+| `docker-compose.yml` / `docker/` | DynamoDB Local + アプリのローカル開発環境一式 |
 | `deploy/lambda/Dockerfile` | Lambda本番用（Native AOT、マネージド`dotnet:10`ランタイムイメージ）のビルド |
 
 ## 案件ごとに追加するもの（サンプル実装が入っている。置き換え・削除してよい）
@@ -86,20 +86,41 @@ pwsh scripts/show-tables.ps1
 pwsh scripts/get-all.ps1 sample_items
 ```
 
-### フロントとの同一オリジン確認用プロキシ
+### フロントとの同一オリジン（Cookie認証）
 
-Cookie認証はブラウザの同一オリジン（または同一サイト）判定に依存するため、本番はフロントとAPIを
-同一ドメインで運用する想定。ローカルでも同様の確認ができるよう、`docker-compose.yml`に`proxy`サービス
-（[Caddy](https://caddyserver.com/)、設定は`docker/caddy/Caddyfile`）を用意している。
+Cookie認証はブラウザの同一オリジン（または同一サイト）判定に依存するため、フロントとAPIは同一オリジンにそろえる。
 
-1. フロントのローカル開発サーバを起動し、待ち受けポートを確認する。
-2. `.env`（`.env.example`をコピー）の`FRONTEND_PORT`にそのポート番号を設定する。
-3. `docker compose up`でプロキシを起動し直す。
-4. ブラウザで`http://localhost:8181`を開く。フロントの画面がそのまま表示され、
-   `{API_PATH}/...`（既定`api`）宛のリクエストはCookie付きでAPIへ振り分けられる。
+- **本番**: CloudFrontなどで同一ドメインにし、パスでフロントとAPIを振り分ける（CORS不要）。
+- **ローカル**: クライアント側の開発サーバーのプロキシで`/api`などをこのサーバー（`http://localhost:5001`）へ転送し、
+  同一オリジンにそろえるのを推奨する。例としてViteの`server.proxy`:
 
-フロント側がVite等の`server.proxy`のような同種の機能を持つ場合は、そちらで完結させてもよい
-（この`proxy`サービスは必須ではない）。
+  ```ts
+  // vite.config.ts
+  export default defineConfig({
+    server: {
+      proxy: {
+        '/api': 'http://localhost:5001',
+      },
+    },
+  });
+  ```
+
+  Next.jsの`rewrites`、Angularの`proxy.conf.json`、webpackの`devServer.proxy`など、他のツールにも同種の機能がある。
+  サーバー側のテンプレートは特定のフロント構成を前提にしない。
+
+推奨するローカルの起動手順:
+
+1. `docker-compose up -d db db-init`でDBだけ起動する。
+2. サーバーを`dotnet run`（`launchSettings.json`のプロファイル）で起動する。
+3. クライアントは自前の開発サーバーを起動し、その開発サーバーのポートでアクセスする。
+
+`docker-compose.yml`の`app`サービスは、コンテナで丸ごと動かしたい場合向けの任意のもの。通常は`dotnet run`を推奨する。
+
+どうしても別オリジンで呼びたい場合だけ、`Program.cs`のコメントアウトされたCORS設定を有効にする。
+
+- 固定オリジン + `AllowCredentials`にする（`AllowAnyOrigin`とは併用不可）。
+- `localhost`同士はポートが違ってもsame-siteなので、`SameSite=None`は不要。
+- `AddCors`と`UseCors`は必ず同時に有効にする（`AddCors`なしで`UseCors`だけだと例外になる）。
 
 ## 本番デプロイ用イメージ
 

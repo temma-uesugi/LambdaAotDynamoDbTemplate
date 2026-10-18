@@ -187,4 +187,3 @@ dotnet run --project MasterData.Generator
 | `SSM_PARAM_JWT` | JWT署名鍵のParameter Storeパラメータ名 | ローカルでは未参照（ダミー鍵を使用） |
 | `SSM_PARAM_RECAPTCHA` | reCAPTCHAシークレットのParameter Storeパラメータ名 | ローカルでは未参照（reCAPTCHA検証自体をスキップ） |
 | `ORIGIN_VERIFY_SECRET` | CloudFront直叩き防止用の秘匿ヘッダーの期待値 | `Program.cs`の`app.UseOriginVerification();`がデフォルトでコメントアウトされているため未参照。CloudFrontを前段に挟む構成で有効化した場合のみ必要 |
-| `FRONTEND_PORT` / `API_PATH` | ローカルの同一オリジン確認用プロキシ（Caddy）向け設定 | `.env`（`.env.example`参照） |

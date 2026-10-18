@@ -18,7 +18,7 @@ builder.ConfigureRecaptcha();
 
 // CORS設定
 // Note: Cookie認証を使う場合、AllowAnyOriginとAllowCredentialsは併用できない。
-// フロントとAPIを同一ドメイン（リバースプロキシ等でパスを振り分ける構成）で運用するならCORS自体不要。
+// フロントとAPIを同一オリジンで運用するならCORS自体不要（本番はCloudFront等で同一ドメイン、ローカルはクライアント側の開発サーバーのプロキシ）。
 // 別ドメイン構成にする場合のみ、固定オリジン+AllowCredentialsで以下を有効化する。
 // builder.Services.AddCors(options =>
 // {
