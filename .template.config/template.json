@@ -13,6 +13,7 @@
       "modifiers": [
         {
           "exclude": [
+            "README.md",
             "**/bin/**",
             "**/obj/**",
             ".git/**",
@@ -21,7 +22,10 @@
             ".claude/**",
             "**/*.user",
             "MasterData/Generated/master.bytes"
-          ]
+          ],
+          "rename": {
+            "docs/README.project.md": "README.md"
+          }
         }
       ]
     }
