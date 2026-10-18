@@ -1,0 +1,29 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "temma",
+  "classifications": [ "Web", "API", "AWS", "Lambda", "Native AOT" ],
+  "identity": "LambdaAotDynamoDbTemplate.Template",
+  "name": "Lambda Native AOT + DynamoDB API Template",
+  "shortName": "lambda-aot-ddb",
+  "tags": { "language": "C#", "type": "solution" },
+  "preferNameDirectory": true,
+  "sourceName": "LambdaAotDynamoDbTemplate",
+  "sources": [
+    {
+      "modifiers": [
+        {
+          "exclude": [
+            "**/bin/**",
+            "**/obj/**",
+            ".git/**",
+            ".idea/**",
+            ".vs/**",
+            ".claude/**",
+            "**/*.user",
+            "MasterData/Generated/master.bytes"
+          ]
+        }
+      ]
+    }
+  ]
+}
