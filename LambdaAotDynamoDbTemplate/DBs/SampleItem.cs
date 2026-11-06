@@ -4,7 +4,7 @@ namespace DBs;
 
 /// <summary>
 /// DynamoDBテーブル定義のサンプル。新規案件では本クラスをコピーして実テーブルに合わせたプロパティに置き換える。
-/// 併せてConfigures/DynamoDbTableNames.csにプロパティを追加し、
+/// 低レベルAPI（IAmazonDynamoDB）でも操作するならConfigures/DynamoDbTableNames.csにプロパティを追加し、
 /// ローカル確認用にdocker/dynamodb/tables/配下へ同名のテーブル定義yamlを追加する
 /// （docker/dynamodb/tables/・seed/は空でコミットされているため、案件ごとに追加する運用）。
 /// </summary>

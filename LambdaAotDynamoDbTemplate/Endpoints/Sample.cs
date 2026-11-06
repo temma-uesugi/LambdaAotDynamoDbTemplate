@@ -1,5 +1,6 @@
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.DataModel;
+using Amazon.DynamoDBv2.Model;
 using Configures;
 using DBs;
 using Logging;
@@ -89,19 +90,18 @@ public static class SampleEndpoints
             .WithDescription("CookieのJWTからユーザIDを取得できなければUnauthorizedHttpResult(401)を、取得できればSampleAuthResを返す")
             .WithTags("9.Sample");
 
-        // サンプル4: DynamoDB（DBs/SampleItem.cs、テーブル名はConfigures/DynamoDbTableNames.cs経由）から
-        // IDynamoDBContext.LoadAsyncで1件取得する例。見つからなければNotFoundを返す。
+        // サンプル4: DynamoDB（DBs/SampleItem.cs）からIDynamoDBContext.LoadAsyncで1件取得する例。
+        // テーブル名はDYNAMODB_TABLE_NAME_PREFIXのprefixが自動で付くのでOverrideTableNameは指定しない
+        // （指定するとprefixが二重に付く）。見つからなければNotFoundを返す。
         app.MapGet("/sample/item/{id}", async Task<Results<Ok<Dto.SampleItemRes>, NotFound>> (
                 string id,
                 IDynamoDBContext dbContext,
-                DynamoDbTableNames tableNames,
                 RecaptchaService recaptchaService,
                 IAmazonDynamoDB dynamoDb,
                 JwtTokenService jwtTokenService,
                 IAppLogger logger) =>
             {
-                var config = new LoadConfig { OverrideTableName = tableNames.SampleItems };
-                var item = await dbContext.LoadAsync<SampleItem>(id, config);
+                var item = await dbContext.LoadAsync<SampleItem>(id);
                 if (item is null)
                 {
                     logger.Warning("サンプルアイテムが見つかりませんでした", id);
@@ -115,6 +115,39 @@ public static class SampleEndpoints
             .WithName("SampleGetItem")
             .WithSummary("サンプル: DynamoDBからの取得")
             .WithDescription("sample_itemsテーブルをidでLoadAsyncし、見つかればSampleItemRes、無ければ404を返す")
+            .WithTags("9.Sample");
+
+        // サンプル5: 低レベルAPI（IAmazonDynamoDB）で1件取得する例。SDKがprefixを付けないので、
+        // テーブル名はConfigures/DynamoDbTableNames.cs経由で渡す。条件付き書き込みやアトミックインクリメントも同じ書き方になる。
+        app.MapGet("/sample/item/{id}/low-level", async Task<Results<Ok<Dto.SampleItemRes>, NotFound>> (
+                string id,
+                IAmazonDynamoDB dynamoDb,
+                DynamoDbTableNames tableNames,
+                IAppLogger logger,
+                CancellationToken ct) =>
+            {
+                var response = await dynamoDb.GetItemAsync(new GetItemRequest
+                {
+                    TableName = tableNames.SampleItems,
+                    Key = new Dictionary<string, AttributeValue>
+                    {
+                        ["id"] = new AttributeValue { S = id },
+                    },
+                }, ct);
+
+                // 見つからない場合のItemはnullまたは空になる
+                if (response.Item is not { Count: > 0 } item)
+                {
+                    logger.Warning("サンプルアイテムが見つかりませんでした", id);
+                    return TypedResults.NotFound();
+                }
+
+                var name = item.TryGetValue("name", out var nameValue) ? nameValue.S : null;
+                return TypedResults.Ok(new Dto.SampleItemRes(id, name));
+            })
+            .WithName("SampleGetItemLowLevel")
+            .WithSummary("サンプル: DynamoDBからの取得（低レベルAPI）")
+            .WithDescription("sample_itemsテーブルをidでGetItemし、見つかればSampleItemRes、無ければ404を返す")
             .WithTags("9.Sample");
     }
 }

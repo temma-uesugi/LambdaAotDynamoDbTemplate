@@ -1,25 +1,22 @@
 namespace Configures;
 
 /// <summary>
-/// 環境ごとに異なるDynamoDBの実テーブル名を保持する。
-/// インフラ側がテーブルごとに任意の名前を割り当てるため、テーブルごとに個別の環境変数で受け取る。
-/// 新規案件でテーブルを追加する場合は、このクラスにプロパティを追加し、FromEnvironmentで対応する
-/// 環境変数を読み込む（対応するDBs/*.csの[DynamoDBTable]属性、docker/dynamodb/tables/*.yamlも合わせて追加する）。
-/// 以下のSampleItemsは使い方のサンプル。
+/// 低レベルAPI（IAmazonDynamoDB）で使う実テーブル名を保持する。
+/// IDynamoDBContext経由の操作はTableNamePrefixで自動的に解決されるので、ここを参照しない
+/// （OverrideTableNameを併用するとprefixが二重に付くため、使わないこと）。
+/// 新規テーブルを低レベルAPIで操作する場合は、このクラスにプロパティを追加する。
+/// テーブル名を決められない案件での書き換えはdocs/usage.md 3章の「パターン2」を参照。
 /// </summary>
 public class DynamoDbTableNames
 {
     /// <summary>sample_itemsテーブルの実テーブル名（サンプル。実際のテーブルに合わせて置き換える）</summary>
-    public required string SampleItems { get; init; }
+    public string SampleItems { get; }
 
     /// <summary>
-    /// 環境変数からテーブル名を読み込む
+    /// コンストラクタ
     /// </summary>
-    public static DynamoDbTableNames FromEnvironment()
+    public DynamoDbTableNames(string prefix)
     {
-        return new DynamoDbTableNames
-        {
-            SampleItems = System.Environment.GetEnvironmentVariable("TABLE_SAMPLE_ITEMS") ?? "sample_items",
-        };
+        SampleItems = prefix + "sample_items";
     }
 }

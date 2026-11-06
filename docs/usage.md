@@ -24,26 +24,138 @@ builder.ConfigureRecaptcha();   // reCAPTCHAシークレット取得 + Recaptcha
 | ファイル | 役割 |
 |---|---|
 | `LambdaConfig.cs` | `AddAWSLambdaHosting`でAPI Gateway REST API連携を有効化。`dotnet run`等の通常起動時は素通りする |
-| `DynamoDbConfig.cs` | ローカル(`IsDevelopment`)では`DYNAMODB_LOCAL_ENDPOINT`（未設定時`http://localhost:8001`）を参照するDynamoDBクライアントを、本番では通常のクライアントを登録する |
-| `DynamoDbTableNames.cs` | テーブルごとの実テーブル名を環境変数から読む。**新規テーブル追加時はここにプロパティを足す**（3章参照） |
+| `DynamoDbConfig.cs` | ローカル(`IsDevelopment`)では`DYNAMODB_LOCAL_ENDPOINT`（未設定時`http://localhost:8001`）を参照するDynamoDBクライアントを、本番では通常のクライアントを登録する。`IDynamoDBContext`には`DYNAMODB_TABLE_NAME_PREFIX`のprefixを設定する（3章参照） |
+| `DynamoDbTableNames.cs` | 低レベルAPI（`IAmazonDynamoDB`）で使う実テーブル名をprefixから作る。**新規テーブルを低レベルAPIで操作するときはここにプロパティを足す**（3章参照） |
 | `JwtConfig.cs` | ローカルはダミー鍵、本番は`SSM_PARAM_JWT`が指すParameter StoreからJWT署名鍵を取得 |
 | `RecaptchaConfig.cs` | ローカルはダミー、本番は`SSM_PARAM_RECAPTCHA`からreCAPTCHAシークレットを取得。使わない案件ではファイルごと削除してよい |
 | `OriginVerificationConfig.cs` | CloudFrontが注入する秘匿ヘッダー（`X-Origin-Secret`、値は`ORIGIN_VERIFY_SECRET`環境変数）を検証し、直叩きを403で拒否する。CloudFrontを前段に挟まない構成もあるため、`Program.cs`の`app.UseOriginVerification();`はデフォルトでコメントアウトしてある。使う案件ではコメントを解除する |
 | `SecurityHeadersConfig.cs` | `X-Content-Type-Options: nosniff`等、レスポンスに付与するセキュリティヘッダーをまとめる場所 |
 | `SwaggerConfig.cs` | Swagger UIの設定。Bearer認証UIの定義例がコメントアウトで残してある（4章参照） |
 
-## 3. DynamoDBテーブルを追加する
+## 3. DynamoDBテーブル
 
-`DBs/SampleItem.cs`が実装のサンプル。新規テーブルを追加する手順は以下の4点セット。
+### テーブル名の指定方式を選ぶ
+
+案件ごとに次のどちらかを選ぶ。テンプレートのコードは**パターン1**の状態になっている。
+
+| | パターン1: prefix方式（既定） | パターン2: テーブルごとの環境変数方式 |
+|---|---|---|
+| 向いている案件 | テーブル名を自分で決められる（自社CDKで構築する等） | テーブル名を決められない（別会社がインフラを構築する等） |
+| 判断の基準 | 全テーブルの実名を`prefix + [DynamoDBTable]の名前`で表せる | 実名に共通の規則がなく、上の形で表せない |
+| 環境変数 | `DYNAMODB_TABLE_NAME_PREFIX`の1つ | テーブルごとの`TABLE_XXX` |
+| `IDynamoDBContext` | prefixが自動で付く。`OverrideTableName`は使わない | 操作ごとに`OverrideTableName`を指定する |
+| `IAmazonDynamoDB`（低レベルAPI） | `DynamoDbTableNames`の値を使う | `DynamoDbTableNames`の値を使う |
+| `DynamoDbTableNames`のプロパティ | 低レベルAPIで使うテーブルの分だけ | 全テーブルの分 |
+
+テーブル名を決められる案件では、パターン1を選ぶ。環境変数が1つで済み、`OverrideTableName`の指定漏れも起きない。
+
+**2つの方式は混ぜない。** SDKは`OverrideTableName`で指定した名前にも`TableNamePrefix`を付ける
+（`AWSSDK.DynamoDBv2` 4.0.100.2の`DynamoDBContext.GetTableName`で確認）。
+`TableNamePrefix`を設定したまま`OverrideTableName`に実テーブル名を渡すと、prefixが二重に付いて別のテーブルを指してしまう。
+
+### パターン1: prefix方式（既定）
+
+コードの変更は不要。デプロイ先のLambdaに環境変数を設定し、インフラ側のテーブルを`prefix + [DynamoDBTable]の名前`で作る。
+
+| 環境 | `DYNAMODB_TABLE_NAME_PREFIX` | `sample_items`の実テーブル名 |
+|---|---|---|
+| ローカル | 未設定 | `sample_items` |
+| ステージング（例） | `myapp-stg-` | `myapp-stg-sample_items` |
+| 本番（例） | `myapp-prod-` | `myapp-prod-sample_items` |
+
+- 区切り文字（上の例の末尾の`-`）もprefixに含める。SDKは単純に文字列を連結する。
+- デプロイ先で設定し忘れると、起動時にエラーにならず、prefixなしのテーブル名を参照する。CDK等で確実に設定する。
+
+`IDynamoDBContext`はprefixを自動で付けるので、テーブル名を指定しない。
+`IAmazonDynamoDB`にはprefixが付かないので、`DynamoDbTableNames`の値を渡す。
+
+```csharp
+// IDynamoDBContext
+var item = await dbContext.LoadAsync<SampleItem>(id);
+
+// IAmazonDynamoDB（Endpoints/Sample.csの/sample/item/{id}/low-levelが実例）
+var response = await dynamoDb.GetItemAsync(new GetItemRequest
+{
+    TableName = tableNames.SampleItems,
+    Key = key,
+}, ct);
+```
+
+### パターン2への変更手順
+
+**1. `Configures/DynamoDbConfig.cs`**: `TableNamePrefix`の設定をやめ、`DynamoDbTableNames`を環境変数から作る。
+
+```csharp
+builder.Services.AddSingleton<IDynamoDBContext>(sp =>
+    new DynamoDBContextBuilder()
+        .WithDynamoDBClient(sp.GetRequiredService<IAmazonDynamoDB>)
+        .Build());
+
+// テーブルごとの実テーブル名（環境変数経由でインフラ側から受け取る。未設定ならデフォルト名を使う）
+builder.Services.AddSingleton(DynamoDbTableNames.FromEnvironment());
+```
+
+**2. `Configures/DynamoDbTableNames.cs`**: 次の内容に置き換える。全テーブルの分のプロパティを持つ。
+
+```csharp
+namespace Configures;
+
+/// <summary>
+/// 環境ごとに異なるDynamoDBの実テーブル名を保持する。
+/// インフラ側がテーブルごとに任意の名前を割り当てるため、テーブルごとに個別の環境変数で受け取る。
+/// </summary>
+public class DynamoDbTableNames
+{
+    /// <summary>sample_itemsテーブルの実テーブル名</summary>
+    public required string SampleItems { get; init; }
+
+    /// <summary>
+    /// 環境変数からテーブル名を読み込む
+    /// </summary>
+    public static DynamoDbTableNames FromEnvironment()
+    {
+        return new DynamoDbTableNames
+        {
+            SampleItems = System.Environment.GetEnvironmentVariable("TABLE_SAMPLE_ITEMS") ?? "sample_items",
+        };
+    }
+}
+```
+
+**3. `IDynamoDBContext`の全ての操作**: `DynamoDbTableNames`をDIで受け取り、`OverrideTableName`を指定する。
+対象は`Endpoints/Sample.cs`の`/sample/item/{id}`と、案件で追加した操作。
+
+```csharp
+var item = await dbContext.LoadAsync<SampleItem>(id, new LoadConfig { OverrideTableName = tableNames.SampleItems });
+await dbContext.SaveAsync(item, new SaveConfig { OverrideTableName = tableNames.SampleItems });
+```
+
+`DeleteConfig` / `ScanConfig` / `QueryConfig`でも同じように指定する。
+指定を忘れてもコンパイルは通り、実行時に`[DynamoDBTable]`の名前を参照してしまうので注意する。
+
+**4. `IAmazonDynamoDB`の操作**: 変更不要（プロパティ名が同じなので`tableNames.SampleItems`のまま動く）。
+
+**5. 環境変数**: デプロイ先のLambdaに`TABLE_XXX`を設定し、`DYNAMODB_TABLE_NAME_PREFIX`は設定しない。
+ローカルは未設定のままでよい（`FromEnvironment`のデフォルト名を使う）。
+
+**6. ドキュメント**: この章と11章の環境変数一覧を、選んだ方式に合わせて整理する。
+
+### テーブルを追加する
+
+`DBs/SampleItem.cs`が実装のサンプル。手順は方式によって2だけが異なる。
 
 1. **`DBs/XxxTable.cs`**: `[DynamoDBTable("xxx_table")]`を付けたクラスを作り、`[DynamoDBHashKey]`等でキー・属性を定義する（`SampleItem.cs`参照）。
-2. **`Configures/DynamoDbTableNames.cs`**: プロパティと`FromEnvironment()`内の読み込み行を追加する（環境変数名はインフラ側の命名規則に合わせる）。
+2. **`Configures/DynamoDbTableNames.cs`**:
+   - パターン1: **低レベルAPIで操作する場合のみ**プロパティを追加し、コンストラクタで`prefix + "xxx_table"`を代入する。`IDynamoDBContext`だけで操作するなら変更不要。
+   - パターン2: **必ず**プロパティと`FromEnvironment()`内の読み込み行を追加する（環境変数名はインフラ側の命名規則に合わせる）。Lambdaにも環境変数を追加する。
 3. **`docker/dynamodb/tables/xxx_table.yaml`**: `aws dynamodb create-table --cli-input-yaml`形式でローカル用のテーブル定義を追加する（`sample_items.yaml`参照）。`docker/dynamodb/init-tables.sh`はこのディレクトリの`*.yaml`を自動で拾うので、スクリプト自体の変更は不要。
 4. **（必要なら）`docker/dynamodb/seed/xxx_table.yaml`**: `batch-write-item`形式で初期データを入れたい場合に追加する（`sample_items.yaml`参照）。
 
+`[DynamoDBTable]`の名前と`DynamoDbTableNames`のテーブル名は、定数に逃がさず直接書く（1か所でしか使わない定数を増やさないため）。
+
 エンドポイント側からは`IDynamoDBContext`（`LoadAsync`/`SaveAsync`等のオブジェクトマッパー）または
 `IAmazonDynamoDB`（`UpdateItemAsync`等、条件付き書き込みやアトミックインクリメントが必要な場合の低レベルAPI）を
-DIで受け取って使う。テーブル名は必ず`DynamoDbTableNames`経由で取得し、コードに直接テーブル名文字列を書かない。
+DIで受け取って使う。
 
 ## 4. 認証（Cookie + JWT）
 
@@ -117,9 +229,11 @@ Native AOTではリフレクションでの自動解決ができないため、�
   エンドポイントの書き方。戻り値の型を`Results<Ok<Dto.SampleAuthRes>, UnauthorizedHttpResult>`にし、
   分岐ごとに`TypedResults.Ok(...)` / `TypedResults.Unauthorized()`を返す
   （3つ以上の戻り値パターンが必要な場合は`Results<T1, T2, T3>`のように型引数を増やす）。
-- **`GET /api/sample/item/{id}`**: `IDynamoDBContext`と`DynamoDbTableNames`をDIで受け取り、
+- **`GET /api/sample/item/{id}`**: `IDynamoDBContext`をDIで受け取り、
   `sample_items`テーブルを`LoadAsync`で1件取得する例。見つからなければ`NotFound`を返す
-  （2章のテーブル追加手順・3章のDynamoDB操作の実例）。
+  （3章のテーブル追加手順・DynamoDB操作の実例）。
+- **`GET /api/sample/item/{id}/low-level`**: `IAmazonDynamoDB`と`DynamoDbTableNames`をDIで受け取り、
+  同じ`sample_items`テーブルを`GetItemAsync`で1件取得する例（3章の低レベルAPIの実例）。
 
 新規案件では、`Endpoints/XxxEndpoints.cs`を機能単位で作り、`MapXxxEndpoints(this IEndpointRouteBuilder app)`
 という拡張メソッドとして実装し、`Program.cs`の`var api = app.MapGroup("/api");`以降で`api.MapXxxEndpoints();`
@@ -183,7 +297,8 @@ dotnet run --project MasterData.Generator
 |---|---|---|
 | `ASPNETCORE_ENVIRONMENT` | 環境判定（`Development`/`Staging`/`Production`等） | `docker-compose.yml`で`Development`固定 |
 | `DYNAMODB_LOCAL_ENDPOINT` | DynamoDB Localのエンドポイント | `docker-compose.yml`で`http://db:8000`。ホストで`dotnet run`する場合は未設定時のデフォルト`http://localhost:8001`が使われる |
-| `TABLE_SAMPLE_ITEMS` | `sample_items`テーブルの実テーブル名 | 未設定時は`sample_items`（テーブル追加時は同様の環境変数を追加する） |
+| `DYNAMODB_TABLE_NAME_PREFIX` | テーブル名に付けるprefix（例: `myapp-stg-`）。パターン1で使う（3章参照） | 未設定（prefixなし） |
+| `TABLE_SAMPLE_ITEMS` | `sample_items`テーブルの実テーブル名。パターン2に変更した場合のみ使う（3章参照。テーブル追加時は同様の環境変数を追加する） | 未設定時は`sample_items` |
 | `SSM_PARAM_JWT` | JWT署名鍵のParameter Storeパラメータ名 | ローカルでは未参照（ダミー鍵を使用） |
 | `SSM_PARAM_RECAPTCHA` | reCAPTCHAシークレットのParameter Storeパラメータ名 | ローカルでは未参照（reCAPTCHA検証自体をスキップ） |
 | `ORIGIN_VERIFY_SECRET` | CloudFront直叩き防止用の秘匿ヘッダーの期待値 | `Program.cs`の`app.UseOriginVerification();`がデフォルトでコメントアウトされているため未参照。CloudFrontを前段に挟む構成で有効化した場合のみ必要 |

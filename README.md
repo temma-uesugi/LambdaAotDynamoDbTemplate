@@ -26,3 +26,27 @@ dotnet new lambda-aot-ddb -n MyApp -o <出力先>
 
 `template.json`の`shortName` / `identity`を変えたときだけ、`dotnet new install <パス>`をやり直す。
 外すときは`dotnet new uninstall <パス>`。`bin/` / `obj/` / `.git/` / `.idea/` / `.claude/` / `master.bytes`は含まれない。
+
+## DynamoDBのテーブル名の指定方式を選ぶ
+
+案件を作ったら、次のどちらかを選ぶ。テンプレートのコードはパターン1の状態で生成される。設定で切り替える仕組みはなく、パターン2の案件ではコードを書き換える。
+
+| | パターン1: prefix方式（既定） | パターン2: テーブルごとの環境変数方式 |
+|---|---|---|
+| 向いている案件 | テーブル名を自分で決められる（自社CDKで構築する等） | テーブル名を決められない（別会社がインフラを構築する等） |
+| 環境変数 | `DYNAMODB_TABLE_NAME_PREFIX`の1つ（例: `myapp-stg-`） | テーブルごとの`TABLE_XXX` |
+| `IDynamoDBContext` | prefixが自動で付く。`OverrideTableName`は使わない | 操作ごとに`OverrideTableName`を指定する |
+| `IAmazonDynamoDB`（低レベルAPI） | `DynamoDbTableNames`の値（`prefix + テーブル名`）を使う | `DynamoDbTableNames`の値（環境変数の値）を使う |
+
+2つの方式は混ぜない。SDKは`OverrideTableName`の名前にも`TableNamePrefix`を付けるので、併用するとprefixが二重に付く。
+
+**パターン1の手順**: コードの変更は不要。デプロイ先のLambdaに`DYNAMODB_TABLE_NAME_PREFIX`を設定し、テーブルを`prefix + [DynamoDBTable]の名前`（例: `myapp-stg-sample_items`）で作る。ローカルでは設定しない。
+
+**パターン2の手順**（コードの全文は[docs/usage.md](docs/usage.md)の3章を参照）:
+
+1. `Configures/DynamoDbConfig.cs`: `TableNamePrefix`の設定をやめ、`DynamoDbTableNames.FromEnvironment()`を登録する。
+2. `Configures/DynamoDbTableNames.cs`: 全テーブルの分のプロパティを持ち、`TABLE_XXX`から読む形に置き換える。
+3. `IDynamoDBContext`の全ての操作（`Endpoints/Sample.cs`の`/sample/item/{id}`を含む）に`OverrideTableName`を指定する。
+4. デプロイ先のLambdaに`TABLE_XXX`を設定し、`DYNAMODB_TABLE_NAME_PREFIX`は設定しない。
+
+テーブルの追加手順も方式によって異なる（[docs/usage.md](docs/usage.md)の3章を参照）。

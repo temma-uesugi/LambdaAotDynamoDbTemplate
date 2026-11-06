@@ -25,21 +25,28 @@ AWS Lambda（.NET Native AOT）+ API Gateway（REST API）+ DynamoDB 構成の�
 これらを削除・置き換えて、同じパターンで追加していく。
 
 - **`DBs/SampleItem.cs`**: DynamoDBテーブル定義（`[DynamoDBTable]` + `[DynamoDBHashKey]`）のサンプル。
-- **`Configures/DynamoDbTableNames.cs`**: 環境変数からテーブルの実名を受け取る仕組みのサンプル
-  （`SampleItems`プロパティ / `TABLE_SAMPLE_ITEMS`環境変数）。テーブルを追加したらここにもプロパティを足す。
+- **`Configures/DynamoDbTableNames.cs`**: 低レベルAPI（`IAmazonDynamoDB`）で使う実テーブル名をprefixから作るサンプル
+  （`SampleItems`プロパティ）。テーブルを低レベルAPIで操作するならここにプロパティを足す。
 - **`Dto.cs`**: DB内部モデルとAPIレスポンス型を分離するサンプル（`SampleItemRes`）と、
   GET/POSTサンプルエンドポイントのリクエスト・レスポンス型。
 - **`docker/dynamodb/tables/sample_items.yaml`・`docker/dynamodb/seed/sample_items.yaml`**:
   ローカルDynamoDB用のテーブル定義とシードデータ。新規テーブルもこのディレクトリに同様の形式で追加する
   （`docker/dynamodb/init-tables.sh`はディレクトリ内の`*.yaml`を自動で拾う汎用スクリプトなので変更不要）。
-- **`Endpoints/Sample.cs`**: GET・POST・認証必須（`UnauthorizedHttpResult`を返しうる）の3パターンの
-  最小サンプル。`Program.cs`で`api.MapSampleEndpoints();`として登録済み。案件のAPIが決まったら
+- **`Endpoints/Sample.cs`**: GET・POST・認証必須（`UnauthorizedHttpResult`を返しうる）・
+  DynamoDB取得（`IDynamoDBContext` / `IAmazonDynamoDB`）の最小サンプル。`Program.cs`で`api.MapSampleEndpoints();`として登録済み。案件のAPIが決まったら
   `Endpoints/XxxEndpoints.cs`を機能単位で作り、`MapXxxEndpoints()`拡張メソッドとして実装、
   `Program.cs`の`var api = app.MapGroup("/api");`以降で`api.MapXxxEndpoints();`を呼ぶ。
 - **`MasterData/Entities/MasterSample.cs`・`MasterData/Sources/MasterSample.yml`**: MasterMemoryによる
   マスタデータのサンプル。新規テーブルの追加手順・`MasterData.Generator`の使い方はdocs/usage.md参照。
 
 汎用インフラ（`Configures/`・`Services/`・`Logging/`等）の詳しい使い方は[docs/usage.md](docs/usage.md)参照。
+
+## テーブル名の指定方式について
+
+テンプレートのコードは、テーブル名を自分で決められる案件向けのprefix方式になっている
+（環境変数は`DYNAMODB_TABLE_NAME_PREFIX`の1つ）。別会社がインフラを構築するなどテーブル名を決められない案件では、
+テーブルごとの環境変数`TABLE_XXX`と`OverrideTableName`を使う方式に書き換える。
+選び方と変更手順は[docs/usage.md](docs/usage.md)の3章を参照。2つの方式は混ぜない。
 
 ## 認証パターンについて
 

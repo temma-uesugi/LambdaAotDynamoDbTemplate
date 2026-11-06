@@ -28,12 +28,18 @@ public static class DynamoDbConfig
 
             return new AmazonDynamoDBClient();
         });
+
+        // テーブル名の指定方式はprefix方式を既定とする。別会社がインフラを構築するなどテーブル名を決められない案件は、
+        // docs/usage.md 3章の「パターン2」に書き換える（2つの方式は混ぜない）。
+        // [DynamoDBTable]属性の名前にprefixを合成する。ローカルでは未設定なのでprefixなしになる
+        var tableNamePrefix = System.Environment.GetEnvironmentVariable("DYNAMODB_TABLE_NAME_PREFIX") ?? string.Empty;
         builder.Services.AddSingleton<IDynamoDBContext>(sp =>
             new DynamoDBContextBuilder()
                 .WithDynamoDBClient(sp.GetRequiredService<IAmazonDynamoDB>)
+                .ConfigureContext(config => config.TableNamePrefix = tableNamePrefix)
                 .Build());
 
-        // テーブルごとの実テーブル名（環境変数経由でインフラ側から受け取る。未設定ならデフォルト名を使う）
-        builder.Services.AddSingleton(DynamoDbTableNames.FromEnvironment());
+        // 低レベルAPI（IAmazonDynamoDB）用の実テーブル名。IDynamoDBContextと同じprefixを使う
+        builder.Services.AddSingleton(new DynamoDbTableNames(tableNamePrefix));
     }
 }
